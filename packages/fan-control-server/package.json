@@ -1,0 +1,26 @@
+{
+    "name": "@power-fan/fan-control-server",
+    "version": "1.0.0",
+    "description": "Fan control server for ESP32 power-fan controller",
+    "type": "module",
+    "main": "./dist/index.js",
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "start": "node dist/index.js",
+        "clean": "rm -rf dist"
+    },
+    "dependencies": {
+        "@power-fan/tcp-client": "workspace:*",
+        "@rh-ai-bu/ts-nvml": "^0.1.0",
+        "express": "^4.21.0",
+        "systeminformation": "^5.23.0",
+        "ws": "^8.18.0"
+    },
+    "devDependencies": {
+        "@types/express": "^5.0.0",
+        "@types/node": "^22.0.0",
+        "@types/ws": "^8.5.0",
+        "typescript": "^5.7.0"
+    }
+}

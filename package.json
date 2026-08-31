@@ -1,0 +1,11 @@
+{
+    "name": "power-fan-client",
+    "private": true,
+    "scripts": {
+        "build": "pnpm -r run build",
+        "clean": "pnpm -r run clean",
+        "dev:fan": "pnpm --filter @power-fan/fan-control-server dev",
+        "dev:power": "pnpm --filter @power-fan/power-server dev",
+        "wifi": "pnpm --filter @power-fan/wifi-config start"
+    }
+}

@@ -1,0 +1,23 @@
+{
+    "name": "@power-fan/wifi-config",
+    "version": "1.0.0",
+    "description": "WiFi configuration CLI tool for ESP32 power-fan controller",
+    "type": "module",
+    "main": "./dist/index.js",
+    "bin": {
+        "power-fan-wifi": "./dist/index.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "clean": "rm -rf dist"
+    },
+    "dependencies": {
+        "@power-fan/tcp-client": "workspace:*",
+        "@inquirer/prompts": "^7.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "^5.7.0"
+    }
+}

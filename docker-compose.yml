@@ -1,0 +1,14 @@
+services:
+  power-server:
+    build:
+      context: .
+      dockerfile: packages/power-server/Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - ESP32_HOST=192.168.1.100
+      - ESP32_PORT=8888
+      - PORT=3002
+    restart: unless-stopped
+    # 如需访问宿主机网络上的 ESP32，可使用 host 模式
+    # network_mode: host
