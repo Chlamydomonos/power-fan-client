@@ -19,7 +19,7 @@ export type FanId = 0 | 1 | 2 | 3;
 export type PowerState = 'on' | 'off';
 
 /**
- * WiFi 配置。
+ * WiFi 配置（写入用）。
  */
 export interface WiFiConfig {
     /** SSID，空字符串表示清空 WiFi 配置 */
@@ -28,6 +28,30 @@ export interface WiFiConfig {
     bssid?: string;
     /** WiFi 密码 */
     password: string;
+}
+
+/**
+ * WiFi 配置信息（读取用）。
+ */
+export interface WiFiConfigInfo {
+    /** 是否启用 BSSID 模式 */
+    bssidMode: boolean;
+    /** SSID，空字符串表示未配置 */
+    ssid: string;
+    /** BSSID，MAC 地址格式 "AA:BB:CC:DD:EE:FF" */
+    bssid: string;
+    /** WiFi 密码 */
+    password: string;
+}
+
+/**
+ * 物理按钮权限。
+ */
+export interface ButtonPermission {
+    /** 物理开机按钮是否允许 */
+    powerBtn: boolean;
+    /** 物理重启按钮是否允许 */
+    resetBtn: boolean;
 }
 
 /**

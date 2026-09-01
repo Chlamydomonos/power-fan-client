@@ -159,12 +159,26 @@ export async function actionSetBssidMode(): Promise<void> {
 /**
  * 操作：查看当前 WiFi 配置。
  *
- * 注意：当前通信协议中 WiFi 配置为只写，无法读取 SSID/密码。
- * 此功能仅提示用户相关限制。
+ * 通过 CmdID 0x0B 读取 ESP32 NVS 中保存的 WiFi 配置。
  */
 export async function actionViewWifiConfig(): Promise<void> {
-    console.log('当前通信协议不支持读取 WiFi 配置（SSID/密码为只写）。');
-    console.log('如需查看或修改配置，请使用「配置 WiFi」功能重新设置。\n');
+    const client = await connectToEsp32();
+    if (!client) return;
+
+    try {
+        const config = await client.getWiFiConfig();
+
+        console.log('当前 WiFi 配置:');
+        console.log(`  BSSID 模式: ${config.bssidMode ? '启用' : '禁用'}`);
+        console.log(`  SSID:       ${config.ssid || '(未配置)'}`);
+        console.log(`  BSSID:      ${config.bssid}`);
+        console.log(`  密码:       ${config.password ? '已设置' : '(空)'}`);
+        console.log();
+    } catch (err) {
+        handleError(err);
+    } finally {
+        await client.disconnect();
+    }
 }
 
 /**

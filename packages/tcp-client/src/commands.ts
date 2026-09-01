@@ -6,7 +6,7 @@
 
 import { CmdId } from './protocol.js';
 import { ProtocolError } from './errors.js';
-import type { FanId, FanRpm, PowerState, WiFiConfig } from './types.js';
+import type { FanId, FanRpm, PowerState, WiFiConfig, WiFiConfigInfo, ButtonPermission } from './types.js';
 import type { TcpClientCore } from './client.js';
 
 /**
@@ -42,6 +42,17 @@ function parseBssid(bssid: string): Buffer {
         return n;
     });
     return Buffer.from(bytes);
+}
+
+/**
+ * 将 6 字节 BSSID Buffer 转换为字符串格式 "AA:BB:CC:DD:EE:FF"。
+ */
+function formatBssid(buf: Buffer): string {
+    const parts: string[] = [];
+    for (let i = 0; i < 6; i++) {
+        parts.push(buf[i].toString(16).padStart(2, '0').toUpperCase());
+    }
+    return parts.join(':');
 }
 
 /**
@@ -139,6 +150,62 @@ export class Commands {
         const payload = Buffer.from([powerBtn ? 1 : 0, resetBtn ? 1 : 0]);
         const frame = await this.core.send(CmdId.SET_BUTTON_PERMISSION, payload);
         checkStatus(frame.payload);
+    }
+
+    /**
+     * 读取 WiFi 配置 (CmdID 0x0B)。
+     *
+     * @returns WiFi 配置信息
+     */
+    async getWiFiConfig(): Promise<WiFiConfigInfo> {
+        const frame = await this.core.send(CmdId.GET_WIFI_CONFIG);
+        const data = checkStatus(frame.payload);
+
+        if (data.length < 3) {
+            throw new Error('WiFi 配置响应数据不完整');
+        }
+
+        let offset = 0;
+        const bssidMode = data[offset++] === 1;
+        const ssidLen = data[offset++];
+
+        if (offset + ssidLen + 6 + 1 > data.length) {
+            throw new Error('WiFi 配置响应数据不完整');
+        }
+
+        const ssid = data.subarray(offset, offset + ssidLen).toString('utf8');
+        offset += ssidLen;
+
+        const bssid = formatBssid(data.subarray(offset, offset + 6));
+        offset += 6;
+
+        const pwdLen = data[offset++];
+        if (offset + pwdLen > data.length) {
+            throw new Error('WiFi 配置响应数据不完整');
+        }
+
+        const password = data.subarray(offset, offset + pwdLen).toString('utf8');
+
+        return { bssidMode, ssid, bssid, password };
+    }
+
+    /**
+     * 读取物理按钮权限 (CmdID 0x0C)。
+     *
+     * @returns 物理按钮权限
+     */
+    async getButtonPermission(): Promise<ButtonPermission> {
+        const frame = await this.core.send(CmdId.GET_BUTTON_PERMISSION);
+        const data = checkStatus(frame.payload);
+
+        if (data.length < 2) {
+            throw new Error('物理按钮权限响应数据不完整');
+        }
+
+        return {
+            powerBtn: data[0] === 1,
+            resetBtn: data[1] === 1,
+        };
     }
 
     // ─── 温度与风扇 ─────────────────────────────────────────

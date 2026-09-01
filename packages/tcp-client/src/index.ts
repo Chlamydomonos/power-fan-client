@@ -8,12 +8,29 @@
 import { EventEmitter } from 'events';
 import { TcpClientCore } from './client.js';
 import { Commands } from './commands.js';
-import type { PowerFanClientOptions, FanId, FanRpm, PowerState, WiFiConfig } from './types.js';
+import type {
+    PowerFanClientOptions,
+    FanId,
+    FanRpm,
+    PowerState,
+    WiFiConfig,
+    WiFiConfigInfo,
+    ButtonPermission,
+} from './types.js';
 
 export { crc16 } from './crc16.js';
 export { CmdId, encodeFrame, FrameParser } from './protocol.js';
 export { ProtocolError, ConnectionError, TimeoutError } from './errors.js';
-export type { FanId, PowerState, WiFiConfig, FanRpm, PowerFanClientOptions, PowerFanClientEvents } from './types.js';
+export type {
+    FanId,
+    PowerState,
+    WiFiConfig,
+    WiFiConfigInfo,
+    ButtonPermission,
+    FanRpm,
+    PowerFanClientOptions,
+    PowerFanClientEvents,
+} from './types.js';
 
 /**
  * ESP32 风扇控制模块 TCP 客户端。
@@ -96,6 +113,16 @@ export class PowerFanClient extends EventEmitter {
     /** 设置物理按钮权限 */
     async setButtonPermission(powerBtn: boolean, resetBtn: boolean): Promise<void> {
         return this.commands.setButtonPermission(powerBtn, resetBtn);
+    }
+
+    /** 读取 WiFi 配置 */
+    async getWiFiConfig(): Promise<WiFiConfigInfo> {
+        return this.commands.getWiFiConfig();
+    }
+
+    /** 读取物理按钮权限 */
+    async getButtonPermission(): Promise<ButtonPermission> {
+        return this.commands.getButtonPermission();
     }
 
     // ─── 温度与风扇 ─────────────────────────────────────────

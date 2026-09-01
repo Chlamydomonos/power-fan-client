@@ -13,6 +13,8 @@ const resetBtn = ref(false);
 const updating = ref(false);
 
 // 同步后端状态到本地
+// buttons 为 null 时表示后端尚不知道当前按钮权限状态（协议无读取命令）
+// 此时开关可用，用户可以主动设置
 watch(
     () => props.status.buttons,
     (buttons) => {
@@ -56,21 +58,13 @@ async function updateResetBtn(val: boolean) {
         <n-space vertical size="large">
             <n-space align="center">
                 <n-text>开机按钮</n-text>
-                <n-switch
-                    :value="powerBtn"
-                    :disabled="updating || status.buttons === null"
-                    @update:value="updatePowerBtn"
-                />
+                <n-switch :value="powerBtn" :disabled="updating" @update:value="updatePowerBtn" />
                 <n-text depth="3">{{ powerBtn ? '启用' : '禁用' }}</n-text>
             </n-space>
 
             <n-space align="center">
                 <n-text>重启按钮</n-text>
-                <n-switch
-                    :value="resetBtn"
-                    :disabled="updating || status.buttons === null"
-                    @update:value="updateResetBtn"
-                />
+                <n-switch :value="resetBtn" :disabled="updating" @update:value="updateResetBtn" />
                 <n-text depth="3">{{ resetBtn ? '启用' : '禁用' }}</n-text>
             </n-space>
         </n-space>

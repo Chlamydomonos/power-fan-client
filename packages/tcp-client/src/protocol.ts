@@ -48,6 +48,10 @@ export enum CmdId {
     SET_FAN_SWITCH = 0x09,
     /** 设置风扇 PWM */
     SET_FAN_PWM = 0x0a,
+    /** 读取 WiFi 配置 */
+    GET_WIFI_CONFIG = 0x0b,
+    /** 读取物理按钮权限 */
+    GET_BUTTON_PERMISSION = 0x0c,
 }
 
 /**

@@ -64,11 +64,16 @@ export class PowerMonitor {
         this.verifying = true;
 
         try {
-            const powerState = await this.client.getPowerState();
+            // 并行读取开机状态和按钮权限
+            const [powerState, buttons] = await Promise.all([
+                this.client.getPowerState(),
+                this.client.getButtonPermission(),
+            ]);
             this.updateStatus({
                 ...this.currentStatus,
                 esp32Connected: true,
                 powerState,
+                buttons,
             });
             this.startPolling();
         } catch {
