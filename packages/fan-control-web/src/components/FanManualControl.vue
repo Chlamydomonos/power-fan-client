@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { NCard, NSpace, NSwitch, NSlider, NButton, NGrid, NGi, NText, useMessage } from 'naive-ui';
 import { useApi } from '../composables/useApi';
 
-const { setFanSwitch, setFanPwm } = useApi();
+const { setFanSwitch, setFanPwm, clearOverride } = useApi();
 const message = useMessage();
 
 interface FanControl {
@@ -35,6 +35,19 @@ async function applyFan(fanId: number) {
         fan.loading = false;
     }
 }
+
+async function resetToAuto(fanId: number) {
+    const fan = fans.value[fanId];
+    fan.loading = true;
+    try {
+        await clearOverride(fanId);
+        message.success(`风扇${fanId} 已恢复自动控制`);
+    } catch (err) {
+        message.error(err instanceof Error ? err.message : '操作失败');
+    } finally {
+        fan.loading = false;
+    }
+}
 </script>
 
 <template>
@@ -50,6 +63,14 @@ async function applyFan(fanId: number) {
                         <n-text>PWM: {{ fans[fanId].pwm }}</n-text>
                         <n-button size="small" type="primary" :loading="fans[fanId].loading" @click="applyFan(fanId)">
                             应用
+                        </n-button>
+                        <n-button
+                            size="small"
+                            type="warning"
+                            :loading="fans[fanId].loading"
+                            @click="resetToAuto(fanId)"
+                        >
+                            恢复自动
                         </n-button>
                     </n-space>
                 </n-gi>

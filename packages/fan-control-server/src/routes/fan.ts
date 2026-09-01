@@ -71,6 +71,18 @@ export function createFanRouter(client: PowerFanClient, controller: FanControlle
         }
     });
 
+    // DELETE /api/fans/:fanId/override — 清除手动覆盖，恢复表达式自动控制
+    router.delete('/:fanId/override', async (req: Request, res: Response) => {
+        const fanId = parseInt(String(req.params.fanId), 10);
+        if (fanId < 1 || fanId > 3) {
+            res.status(400).json({ error: 'fanId 必须为 1-3' });
+            return;
+        }
+
+        controller.clearOverride(fanId);
+        res.json({ ok: true });
+    });
+
     // GET /api/status — 获取系统状态
     router.get('/status', (_req: Request, res: Response) => {
         const latest = controller.latest;

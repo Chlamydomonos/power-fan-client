@@ -73,5 +73,15 @@ export function useApi() {
         }
     }
 
-    return { getExpressions, saveExpressions, testExpressions, setFanSwitch, setFanPwm };
+    async function clearOverride(fanId: number): Promise<void> {
+        const res = await fetch(`/api/fans/${fanId}/override`, {
+            method: 'DELETE',
+        });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error ?? '清除覆盖失败');
+        }
+    }
+
+    return { getExpressions, saveExpressions, testExpressions, setFanSwitch, setFanPwm, clearOverride };
 }
