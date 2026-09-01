@@ -6,8 +6,8 @@ WORKDIR /app
 # 启用 pnpm
 RUN corepack enable pnpm
 
-# 复制 workspace 配置
-COPY pnpm-workspace.yaml package.json ./
+# 复制 workspace 配置和 lockfile
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/tcp-client/package.json packages/tcp-client/
 COPY packages/power-server/package.json packages/power-server/
 COPY packages/power-web/package.json packages/power-web/
@@ -33,7 +33,7 @@ WORKDIR /app
 
 RUN corepack enable pnpm
 
-COPY pnpm-workspace.yaml package.json ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/tcp-client/package.json packages/tcp-client/
 COPY packages/power-server/package.json packages/power-server/
 
