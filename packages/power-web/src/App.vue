@@ -17,7 +17,7 @@ const { status } = useWebSocket();
 
                     <n-space vertical size="large">
                         <PowerStatus :status="status" />
-                        <PowerActions />
+                        <PowerActions :status="status" />
                         <ButtonPermission :status="status" />
                     </n-space>
                 </n-layout-content>
