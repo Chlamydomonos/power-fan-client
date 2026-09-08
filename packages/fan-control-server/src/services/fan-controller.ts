@@ -1,12 +1,13 @@
 /**
  * 风扇控制循环 — 每秒采集温度、执行表达式、控制风扇、推送数据。
+ * 支持平滑过渡：开关和 PWM 占空比渐变，避免突变。
  */
 
 import type { PowerFanClient, FanRpm } from '@power-fan/tcp-client';
 import type { TempCollector, TempData } from './temp-collector.js';
 import type { ExpressionConfig } from '../store.js';
 import { executeAll, type ExpressionResult, ExpressionError } from './expression-engine.js';
-import { CONTROL_INTERVAL } from '../config.js';
+import { CONTROL_INTERVAL, DEFAULT_SMOOTH_STEP } from '../config.js';
 
 /** 风扇实时状态 */
 export interface FanStatus {
@@ -32,6 +33,18 @@ interface ManualOverride {
     pwm?: number;
 }
 
+/** 每风扇的平滑过渡状态 */
+interface SmoothState {
+    /** 当前实际下发的 PWM 值 */
+    currentPwm: number;
+    /** 目标 PWM 值 */
+    targetPwm: number;
+    /** 当前实际下发的开关状态 */
+    currentOn: boolean;
+    /** 目标开关状态 */
+    targetOn: boolean;
+}
+
 export class FanController {
     private readonly client: PowerFanClient;
     private readonly collector: TempCollector;
@@ -51,10 +64,29 @@ export class FanController {
     /** 数据更新回调 */
     private callbacks = new Set<ControlDataCallback>();
 
+    /** 是否启用平滑过渡 */
+    private smoothEnabled = false;
+
+    /** 平滑过渡步长（每次 tick PWM 变化量，1-255） */
+    private smoothStep = DEFAULT_SMOOTH_STEP;
+
+    /** 每风扇的平滑过渡状态（fanId → SmoothState） */
+    private smoothStates = new Map<number, SmoothState>();
+
     constructor(client: PowerFanClient, collector: TempCollector, expressions: ExpressionConfig) {
         this.client = client;
         this.collector = collector;
         this.expressions = expressions;
+
+        // 初始化每风扇的平滑状态
+        for (let i = 1; i <= 3; i++) {
+            this.smoothStates.set(i, {
+                currentPwm: 0,
+                targetPwm: 0,
+                currentOn: false,
+                targetOn: false,
+            });
+        }
     }
 
     /** 最新数据快照 */
@@ -81,6 +113,33 @@ export class FanController {
     /** 清除手动覆盖 */
     clearOverride(fanId: number): void {
         this.overrides.delete(fanId);
+    }
+
+    /** 设置是否启用平滑过渡 */
+    setSmoothEnabled(enabled: boolean): void {
+        this.smoothEnabled = enabled;
+        // 禁用平滑时，立即将当前状态对齐到目标值
+        if (!enabled) {
+            for (const [, state] of this.smoothStates) {
+                state.currentPwm = state.targetPwm;
+                state.currentOn = state.targetOn;
+            }
+        }
+    }
+
+    /** 获取平滑过渡启用状态 */
+    get isSmoothEnabled(): boolean {
+        return this.smoothEnabled;
+    }
+
+    /** 设置平滑过渡步长（1-255） */
+    setSmoothStep(step: number): void {
+        this.smoothStep = Math.max(1, Math.min(255, Math.round(step)));
+    }
+
+    /** 获取平滑过渡步长 */
+    get smoothStepValue(): number {
+        return this.smoothStep;
     }
 
     /** 启动控制循环 */
@@ -127,7 +186,7 @@ export class FanController {
             return;
         }
 
-        // 3. 应用手动覆盖
+        // 3. 应用手动覆盖 + 平滑过渡
         const fanStatuses: FanStatus[] = [];
 
         for (let i = 0; i < 3; i++) {
@@ -135,13 +194,34 @@ export class FanController {
             const exprResult = results[i];
             const override = this.overrides.get(fanId);
 
-            const on = override?.on ?? exprResult.on;
-            const pwm = override?.pwm ?? exprResult.pwm;
+            const targetOn = override?.on ?? exprResult.on;
+            const targetPwm = override?.pwm ?? exprResult.pwm;
+
+            // 更新平滑状态的目标值
+            const smooth = this.smoothStates.get(fanId)!;
+            smooth.targetOn = targetOn;
+            smooth.targetPwm = targetPwm;
+
+            let actualOn: boolean;
+            let actualPwm: number;
+
+            if (this.smoothEnabled) {
+                // 平滑过渡：逐步调整 PWM 和开关
+                this.stepSmooth(smooth);
+                actualOn = smooth.currentOn;
+                actualPwm = smooth.currentPwm;
+            } else {
+                // 直接设置
+                smooth.currentOn = targetOn;
+                smooth.currentPwm = targetPwm;
+                actualOn = targetOn;
+                actualPwm = targetPwm;
+            }
 
             // 4. 发送控制指令（仅在状态变化时发送）
-            await this.sendIfChanged(fanId, on, pwm);
+            await this.sendIfChanged(fanId, actualOn, actualPwm);
 
-            fanStatuses.push({ fanId, rpm: 0, on, pwm });
+            fanStatuses.push({ fanId, rpm: 0, on: actualOn, pwm: actualPwm });
         }
 
         // 5. 读取风扇实际 RPM
@@ -159,6 +239,44 @@ export class FanController {
 
         // 6. 推送数据
         this.notifyCallbacks(temps, fanStatuses);
+    }
+
+    /**
+     * 平滑过渡一步：根据 smoothStep 逐步调整 PWM 和开关状态。
+     * - PWM 渐变：每 tick 向目标值靠近 smoothStep。
+     * - 开关逻辑：
+     *   - 目标开 → 直接打开开关，PWM 从 0 开始渐变到目标值
+     *   - 目标关 → 先将 PWM 渐变到 0，再关闭开关
+     */
+    private stepSmooth(smooth: SmoothState): void {
+        const { currentPwm, targetPwm, currentOn, targetOn } = smooth;
+
+        if (targetOn) {
+            // 目标是开：直接打开开关，PWM 从当前值渐变到目标值
+            smooth.currentOn = true;
+            smooth.currentPwm = this.lerpPwm(currentPwm, targetPwm);
+        } else {
+            // 目标是关：先将 PWM 渐变到 0，再关开关
+            if (currentPwm > 0) {
+                smooth.currentPwm = this.lerpPwm(currentPwm, 0);
+                // PWM 还没到 0，保持开关开
+                smooth.currentOn = true;
+            } else {
+                // PWM 已到 0，关闭开关
+                smooth.currentPwm = 0;
+                smooth.currentOn = false;
+            }
+        }
+    }
+
+    /** PWM 值向目标值靠近一步 */
+    private lerpPwm(current: number, target: number): number {
+        if (current < target) {
+            return Math.min(target, current + this.smoothStep);
+        } else if (current > target) {
+            return Math.max(target, current - this.smoothStep);
+        }
+        return target;
     }
 
     /** 仅在状态变化时发送控制指令 */

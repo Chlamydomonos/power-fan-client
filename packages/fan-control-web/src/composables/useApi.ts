@@ -83,5 +83,46 @@ export function useApi() {
         }
     }
 
-    return { getExpressions, saveExpressions, testExpressions, setFanSwitch, setFanPwm, clearOverride };
+    async function getSmoothEnabled(): Promise<{ enabled: boolean; step: number }> {
+        const res = await fetch('/api/fans/smooth');
+        if (!res.ok) throw new Error('获取平滑过渡状态失败');
+        const data = await res.json();
+        return { enabled: data.smoothEnabled, step: data.smoothStep };
+    }
+
+    async function setSmoothEnabled(enabled: boolean): Promise<void> {
+        const res = await fetch('/api/fans/smooth', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled }),
+        });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error ?? '设置平滑过渡失败');
+        }
+    }
+
+    async function setSmoothStep(step: number): Promise<void> {
+        const res = await fetch('/api/fans/smooth/step', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ step }),
+        });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error ?? '设置平滑步长失败');
+        }
+    }
+
+    return {
+        getExpressions,
+        saveExpressions,
+        testExpressions,
+        setFanSwitch,
+        setFanPwm,
+        clearOverride,
+        getSmoothEnabled,
+        setSmoothEnabled,
+        setSmoothStep,
+    };
 }

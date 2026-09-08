@@ -90,7 +90,41 @@ export function createFanRouter(client: PowerFanClient, controller: FanControlle
             esp32Connected: client.isConnected,
             temps: latest?.temps ?? null,
             fans: latest?.fans ?? [],
+            smoothEnabled: controller.isSmoothEnabled,
+            smoothStep: controller.smoothStepValue,
         });
+    });
+
+    // PUT /api/fans/smooth — 设置是否启用平滑过渡
+    router.put('/smooth', (req: Request, res: Response) => {
+        const { enabled } = req.body as { enabled?: boolean };
+        if (typeof enabled !== 'boolean') {
+            res.status(400).json({ error: 'enabled 必须为布尔值' });
+            return;
+        }
+
+        controller.setSmoothEnabled(enabled);
+        res.json({ ok: true, smoothEnabled: enabled });
+    });
+
+    // GET /api/fans/smooth — 获取平滑过渡状态
+    router.get('/smooth', (_req: Request, res: Response) => {
+        res.json({
+            smoothEnabled: controller.isSmoothEnabled,
+            smoothStep: controller.smoothStepValue,
+        });
+    });
+
+    // PUT /api/fans/smooth/step — 设置平滑过渡步长
+    router.put('/smooth/step', (req: Request, res: Response) => {
+        const { step } = req.body as { step?: number };
+        if (typeof step !== 'number' || step < 1 || step > 255) {
+            res.status(400).json({ error: 'step 必须为 1-255 的数字' });
+            return;
+        }
+
+        controller.setSmoothStep(step);
+        res.json({ ok: true, smoothStep: controller.smoothStepValue });
     });
 
     return router;

@@ -20,6 +20,9 @@ export const esp32Options: PowerFanClientOptions = {
 /** 温度采集与风扇控制循环间隔（毫秒） */
 export const CONTROL_INTERVAL = 1000;
 
+/** 平滑过渡：每次 tick PWM 变化的默认步长（占空比单位 0-255） */
+export const DEFAULT_SMOOTH_STEP = 5;
+
 /** 表达式持久化文件路径 */
 import path from 'path';
 import os from 'os';
